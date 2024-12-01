@@ -5,7 +5,7 @@ import json
 from typing import List
 from dotenv import load_dotenv
 from app.models.chat import Message, Chat
-from app.models.test import LanguageTest
+from app.models.test import LanguageTest, TestQuestion
 
 load_dotenv()
 
@@ -34,11 +34,12 @@ async def generate_chat_response(message: str, language: str, level: str) -> str
     response = await model.generate_content_async(prompt)
     return response.text
 
-async def create_language_chat(user_id: str, language: str, initial_message: str) -> Chat:
+async def create_language_chat(user_id: str, language: str, initial_message: str, level: str = "A2") -> Chat:
     # Initialize a new chat session
     chat = Chat(
         user_id=user_id,
         language=language,
+        level = level,
         title=f"{language} Learning Session: {initial_message}"
     )
     
@@ -50,7 +51,7 @@ async def create_language_chat(user_id: str, language: str, initial_message: str
     )
     
     # Get AI response
-    ai_response = await generate_chat_response(initial_message, language)
+    ai_response = await generate_chat_response(initial_message, language, level)
     assistant_message = Message(
         content=ai_response,
         role="assistant",
@@ -60,17 +61,22 @@ async def create_language_chat(user_id: str, language: str, initial_message: str
     chat.messages.extend([user_message, assistant_message])
     return chat
 
-async def generate_language_test(chat_history: List[Message], language: str, level: str) -> LanguageTest:
-    chat_content = "\n".join([msg.content for msg in chat_history])
+async def generate_language_test(chat_history: List[dict], language: str, level: str, user_id: str, chat_id: str) -> LanguageTest:
+    chat_content = "\n".join([msg["content"] for msg in chat_history])
     
-    structured_prompt = f"""Based on this conversation about {language}, create a list of multiple-choice test questions.
+    structured_prompt = f"""Create 3 multiple-choice questions in {language} based on this conversation.
     Return the response in this exact JSON format:
     {{
-        "question": "question text in {language}",
-        "options": ["option1", "option2", "option3", "option4"],
-        "correct_answer": "exact text of correct option",
-        "explanation": "explanation in English",
-        "topic": "main topic covered"
+        "questions": [
+            {{
+                "question": "question text in english if the level is below B1, else question text in {language}",
+                "options": ["option1", "option2", "option3", "option4"],
+                "correct_answer": "exact text of correct option",
+                "explanation": "explanation in English",
+                "topic": "grammar/vocabulary topic"
+            }},
+            // ... more questions
+        ]
     }}
 
     Context:
@@ -83,16 +89,28 @@ async def generate_language_test(chat_history: List[Message], language: str, lev
         response = await model.generate_content_async(structured_prompt)
         test_data = json.loads(response.text)
         
+        questions = [
+            TestQuestion(
+                question=q["question"],
+                options=q["options"],
+                correct_answer=q["correct_answer"],
+                explanation=q["explanation"],
+                topic=q["topic"],
+                difficulty=level
+            ) for q in test_data["questions"]
+        ]
+        
         return LanguageTest(
-            question=test_data["question"],
-            options=test_data["options"],
-            correct_answer=test_data["correct_answer"],
-            explanation=test_data["explanation"],
-            topic=test_data["topic"],
-            difficulty=level
+            questions=questions,
+            language=language,
+            level=level,
+            user_id=user_id,
+            chat_id=chat_id
         )
-    except (json.JSONDecodeError, KeyError) as e:
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail="Failed to generate structured test response"
+            detail=f"Error generating test: {str(e)}"
         )

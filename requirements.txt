@@ -7,6 +7,7 @@ charset-normalizer==3.4.0
 click==8.1.7
 dnspython==2.7.0
 ecdsa==0.19.0
+email_validator==2.2.0
 fastapi==0.115.4
 google-ai-generativelanguage==0.6.10
 google-api-core==2.22.0
