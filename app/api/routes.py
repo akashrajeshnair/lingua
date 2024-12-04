@@ -113,7 +113,7 @@ async def send_message(chat_id: str, message: Message):
         ])
     
     await update_chat(
-            str(chat["_id"]),  # Convert ObjectId to string
+            chat["_id"],  
             {
                 "messages": newmessages,
                 "updated_at": datetime.now()
