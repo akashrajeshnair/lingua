@@ -102,20 +102,23 @@ async def send_message(chat_id: str, message: Message):
     
     await update_user_progress(progress_data)
     
-    # Update chat with new messages
-    assistant_message = Message(
-        content=response,
-        role="assistant",
-        language=chat["language"]
-    )
+    newmessages = chat.get("messages", [])
+    newmessages.extend([
+            jsonable_encoder(message),
+            jsonable_encoder(Message(
+                content=response,
+                role="assistant",
+                language=chat["language"]
+            ))
+        ])
     
     await update_chat(
-        chat_id,
-        {
-            "messages": chat["messages"] + [message.dict(), assistant_message.dict()],
-            "updated_at": datetime.now()
-        }
-    )
+            str(chat["_id"]),  # Convert ObjectId to string
+            {
+                "messages": newmessages,
+                "updated_at": datetime.now()
+            }
+        )
     
     return {
         "response": response,
