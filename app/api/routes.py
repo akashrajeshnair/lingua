@@ -102,20 +102,25 @@ async def send_message(chat_id: str, message: Message):
 
     await update_user_progress(progress_data)
 
-    # Update chat with new messages
-    assistant_message = Message(
-        content=response,
-        role="assistant",
-        language=chat["language"]
-    )
+    user_message = {
+        "content": message.content,
+        "role": "user",
+        "language": chat["language"]
+    }
 
-    # await update_chat(
-    #     chat_id,
-    #     {
-    #         "messages": chat["messages"] + [message.dict(), assistant_message.dict()],
-    #         "updated_at": datetime.now()
-    #     }
-    # )
+    # Update chat with new messages
+    assistant_message = {
+        "content": response,
+        "role": "assistant",
+        "language": chat["language"]
+    }
+
+    await update_chat(
+        chat_id,
+        update_data = {
+            "messages": chat["messages"] + [message, assistant_message]
+        }
+    )
 
     return {
         "response": response,
