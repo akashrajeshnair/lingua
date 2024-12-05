@@ -118,7 +118,7 @@ async def send_message(chat_id: str, message: Message):
     await update_chat(
         chat_id,
         update_data = {
-            "messages": chat["messages"] + [message, assistant_message]
+            "messages": chat["messages"] + [user_message, assistant_message]
         }
     )
 
