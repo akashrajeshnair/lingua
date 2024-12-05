@@ -76,16 +76,16 @@ async def start_chat(user_id: str, language: str, initial_message: str, level: s
 
 @router.post("/chats/{chat_id}/message")
 async def send_message(chat_id: str, message: Message):
-    chat = await get_chat(ObjectId(chat_id))
+    chat = await get_chat(chat_id)
     if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-    
+        raise HTTPException(status_code=404, message="Chat not found")
+
     response = await generate_chat_response(
         message.content, 
         chat["language"],
         chat["level"]
     )
-    
+
     progress_data = await get_user_progress(chat["user_id"], chat["language"])
     if not progress_data:
         progress_data = {
@@ -95,35 +95,34 @@ async def send_message(chat_id: str, message: Message):
             "xp_points": 0,
             "messages_sent": 0
         }
-    
+
     progress_data["messages_sent"] += 1
     progress_data["xp_points"] += 10
     progress_data["last_interaction"] = datetime.now()
-    
+
     await update_user_progress(progress_data)
-    
-    newmessages = chat.get("messages", [])
-    newmessages.extend([
-            jsonable_encoder(message),
-            jsonable_encoder(Message(
-                content=response,
-                role="assistant",
-                language=chat["language"]
-            ))
-        ])
-    
-    await update_chat(
-            chat["_id"],  
-            {
-                "messages": newmessages,
-                "updated_at": datetime.now()
-            }
-        )
-    
+
+    # Update chat with new messages
+    assistant_message = Message(
+        content=response,
+        role="assistant",
+        language=chat["language"]
+    )
+
+    # await update_chat(
+    #     chat_id,
+    #     {
+    #         "messages": chat["messages"] + [message.dict(), assistant_message.dict()],
+    #         "updated_at": datetime.now()
+    #     }
+    # )
+
     return {
         "response": response,
         "progress": progress_data
     }
+
+
 
 @router.get("/chats/user/{user_id}")
 async def get_user_chats(user_id: str):
